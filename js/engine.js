@@ -64,32 +64,29 @@ function mlStatus(msg, type = 'info') {
 // ══════════════════════════════════════════════════════════════
 //  DUCKDB SQL ENGINE  (DuckDB only, no fallback)
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+//  DUCKDB SQL ENGINE  (DuckDB only)
+// ══════════════════════════════════════════════════════════════
 async function sqlInit() {
   try {
-    const CDN = 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm/dist/';
+    // Use official helper to get the correct jsDelivr bundles
+    const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
+    const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
 
-    // Pick one concrete bundle instead of using selectBundle
-    const mainModule = CDN + 'duckdb-mvp.wasm';
-    const mainWorker = CDN + 'duckdb-browser-mvp.worker.js';
+    // Start DuckDB worker for the selected bundle
+    const worker = new Worker(bundle.mainWorker);
+    const logger = new duckdb.ConsoleLogger();
 
-    // Create a worker that imports the chosen worker script
-    const wBlob = new Blob(
-      [`importScripts("${mainWorker}");`],
-      { type: 'text/javascript' }
-    );
-    const wUrl = URL.createObjectURL(wBlob);
+    S.sqlDB = new duckdb.AsyncDuckDB(logger, worker);
 
-    S.sqlDB = new duckdb.AsyncDuckDB(
-      new duckdb.ConsoleLogger(),
-      new Worker(wUrl)
-    );
-    await S.sqlDB.instantiate(mainModule);
+    // Instantiate the database
+    await S.sqlDB.instantiate(bundle.mainModule, bundle.pthreadWorker);
     S.sqlConn = await S.sqlDB.connect();
 
     S.sqlReady = true;
     setBadge('badge-sql', 'DuckDB Ready', 'ok');
 
-    // Register already-loaded datasets as DuckDB tables
+    // Register any datasets already loaded into S.datasets
     for (const [n, ds] of Object.entries(S.datasets)) {
       await _sqlRegister(n, ds);
     }
