@@ -77,7 +77,7 @@ async function sqlInit() {
     S.sqlReady = true;
     setBadge('badge-sql', 'DuckDB Ready', 'ok');
     for (const [n, ds] of Object.entries(S.datasets)) await _sqlRegister(n, ds);
-  }  } catch (e) {
+  } catch (e) {
     console.error('DuckDB init failed:', e);
     S.sqlReady = false;
     // Do NOT set useFallbackSQL here
