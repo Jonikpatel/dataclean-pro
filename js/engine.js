@@ -61,30 +61,45 @@ function mlStatus(msg, type = 'info') {
 // ══════════════════════════════════════════════════════════════
 //  DUCKDB SQL ENGINE
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+//  DUCKDB SQL ENGINE  (DuckDB only, no fallback)
+// ══════════════════════════════════════════════════════════════
 async function sqlInit() {
   try {
     const CDN = 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm/dist/';
-    const bundles = {
-      mvp: { mainModule: CDN + 'duckdb-mvp.wasm', mainWorker: CDN + 'duckdb-browser-mvp.worker.js' },
-      eh:  { mainModule: CDN + 'duckdb-eh.wasm',  mainWorker: CDN + 'duckdb-browser-eh.worker.js' },
-    };
-    const bndl = await duckdb.selectBundle(bundles);
-    const wBlob = new Blob([`importScripts("${bndl.mainWorker}");`], { type: 'text/javascript' });
+
+    // Pick one concrete bundle instead of using selectBundle
+    const mainModule = CDN + 'duckdb-mvp.wasm';
+    const mainWorker = CDN + 'duckdb-browser-mvp.worker.js';
+
+    // Create a worker that imports the chosen worker script
+    const wBlob = new Blob(
+      [`importScripts("${mainWorker}");`],
+      { type: 'text/javascript' }
+    );
     const wUrl = URL.createObjectURL(wBlob);
-    S.sqlDB = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), new Worker(wUrl));
-    await S.sqlDB.instantiate(bndl.mainModule);
+
+    S.sqlDB = new duckdb.AsyncDuckDB(
+      new duckdb.ConsoleLogger(),
+      new Worker(wUrl)
+    );
+    await S.sqlDB.instantiate(mainModule);
     S.sqlConn = await S.sqlDB.connect();
+
     S.sqlReady = true;
     setBadge('badge-sql', 'DuckDB Ready', 'ok');
-    for (const [n, ds] of Object.entries(S.datasets)) await _sqlRegister(n, ds);
+
+    // Register already-loaded datasets as DuckDB tables
+    for (const [n, ds] of Object.entries(S.datasets)) {
+      await _sqlRegister(n, ds);
+    }
   } catch (e) {
     console.error('DuckDB init failed:', e);
     S.sqlReady = false;
-    // Do NOT set useFallbackSQL here
     setBadge('badge-sql', 'DuckDB Error', 'err');
-    notify('DuckDB SQL engine failed to initialize. Check console for details.', 'err');
+    notify('DuckDB SQL engine failed to initialize. Check console.', 'err');
   }
-  }
+}
 async function _sqlRegister(name, ds) {
   if (S.useFallbackSQL || !S.sqlConn) return;
   try {
