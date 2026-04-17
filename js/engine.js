@@ -77,11 +77,13 @@ async function sqlInit() {
     S.sqlReady = true;
     setBadge('badge-sql', 'DuckDB Ready', 'ok');
     for (const [n, ds] of Object.entries(S.datasets)) await _sqlRegister(n, ds);
-  } catch (e) {
-    console.warn('DuckDB unavailable, using built-in SQL:', e.message);
-    S.useFallbackSQL = true;
-    S.sqlReady = true;
-    setBadge('badge-sql', 'SQL Ready', 'ok');
+  }  } catch (e) {
+    console.error('DuckDB init failed:', e);
+    S.sqlReady = false;
+    // Do NOT set useFallbackSQL here
+    setBadge('badge-sql', 'DuckDB Error', 'err');
+    notify('DuckDB SQL engine failed to initialize. Check console for details.', 'err');
+  }
   }
 }
 
@@ -99,8 +101,9 @@ async function _sqlRegister(name, ds) {
 }
 
 async function sqlRun(sql) {
-  if (!S.sqlReady) throw new Error('SQL engine not ready yet');
-  if (S.useFallbackSQL) return _sqlFallback(sql.trim().replace(/;$/, ''));
+  if (!S.sqlReady || !S.sqlConn) {
+    throw new Error('DuckDB engine not ready yet');
+  }
   try {
     const res = await S.sqlConn.query(sql);
     const headers = res.schema.fields.map(f => f.name);
@@ -114,7 +117,9 @@ async function sqlRun(sql) {
       }
     }
     return { headers, rows };
-  } catch (e) { throw new Error(e.message); }
+  } catch (e) {
+    throw new Error(e.message);
+  }
 }
 
 // ── Fallback SQL parser (SELECT with JOIN/GROUP BY/ORDER BY/LIMIT/CTE) ──
@@ -637,6 +642,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   mlStart();
   await _idbLoad();
-  if (typeof duckdb !== 'undefined') sqlInit().catch(e => { S.useFallbackSQL = true; S.sqlReady = true; setBadge('badge-sql','SQL Ready','ok'); });
-  else { S.useFallbackSQL = true; S.sqlReady = true; setBadge('badge-sql','SQL Ready','ok'); }
+  if (typeof duckdb !== 'undefined') {
+  sqlInit().catch(e => {
+    console.error('DuckDB init failed:', e);
+    S.sqlReady = false;
+    setBadge('badge-sql', 'DuckDB Error', 'err');
+    notify('DuckDB SQL engine failed to initialize. Check console for details.', 'err');
+  });
+} else {
+  S.sqlReady = false;
+  setBadge('badge-sql', 'DuckDB not loaded', 'err');
+  notify('DuckDB not loaded. SQL will not work without DuckDB.', 'err');
+}
 });
