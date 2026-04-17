@@ -85,8 +85,6 @@ async function sqlInit() {
     notify('DuckDB SQL engine failed to initialize. Check console for details.', 'err');
   }
   }
-}
-
 async function _sqlRegister(name, ds) {
   if (S.useFallbackSQL || !S.sqlConn) return;
   try {
