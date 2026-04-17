@@ -349,7 +349,7 @@ function dsAdd(name, headers, rows, fileName) {
   S.datasets[n] = { headers, rows, fileName, loaded: new Date() };
   if (!S.active) S.active = n;
   _idbSave(n);
-  if (S.sqlReady && !S.useFallbackSQL) _sqlRegister(n, S.datasets[n]);
+  if (S.sqlReady) _sqlRegister(n, S.datasets[n]);
   refreshUI();
   notify(`Loaded "${fileName}" → ${rows.length.toLocaleString()} rows × ${headers.length} cols`, 'ok');
 }
