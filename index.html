@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DataClean Pro — Analyst Studio</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2316a34a'/><path d='M7 9h18M7 15h14M7 21h10' stroke='white' stroke-width='2.5' stroke-linecap='round'/></svg>">
+<link rel="stylesheet" href="css/app.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- DuckDB WASM (real SQL engine) — loaded async -->
+<script>
+  (function(){
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-browser.js';
+    s.async=true;document.head.appendChild(s);
+  })();
+</script>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="ndot"></div>
+  <div class="nlogo">DataClean<span>Pro</span></div>
+  <div class="ntag">Analyst Studio</div>
+  <div class="nml">
+    <span id="ml-status-txt" class="ml-msg">Loading Pyodide + sklearn…</span>
+    <span class="badge bg-n" id="badge-ml">ML Loading</span>
+    <span class="badge bg-n" id="badge-sql">SQL…</span>
+  </div>
+  <div class="nr">
+    <span id="nav-count">0 datasets</span>
+    <div class="nsep"></div>
+    <button class="btn btn-sm" onclick="document.getElementById('fi').click()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Load CSV
+    </button>
+    <input type="file" id="fi" multiple accept=".csv,.tsv" style="display:none" onchange="loadFiles(this.files)">
+    <button class="btn btn-p btn-sm" onclick="showTab('sql')">SQL Editor</button>
+  </div>
+</nav>
+
+<!-- ── TABS ── -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('files')" id="t-files">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Files
+  </button>
+  <button class="tab-btn" onclick="showTab('grid')" id="t-grid">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Grid
+  </button>
+  <button class="tab-btn" onclick="showTab('clean')" id="t-clean">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Auto Clean
+  </button>
+  <button class="tab-btn" onclick="showTab('sql')" id="t-sql">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>SQL
+  </button>
+  <button class="tab-btn" onclick="showTab('chart')" id="t-chart">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Charts
+  </button>
+  <button class="tab-btn" onclick="showTab('compare')" id="t-compare">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg>Compare
+  </button>
+  <button class="tab-btn" onclick="showTab('profile')" id="t-profile">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Profile
+  </button>
+</div>
+
+<div class="app">
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sb-sec">Datasets</div>
+  <div id="sb-ds"><div class="sb-empty">No datasets loaded.<br>Drop CSV files anywhere<br>or click Load CSV.</div></div>
+  <div class="sb-sec" style="margin-top:auto;padding-top:6px">Tools</div>
+  <div class="sb-action" onclick="document.getElementById('fi').click()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Load CSV / TSV
+  </div>
+  <div class="sb-action" onclick="Cleaner.openFor()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Auto Clean (ML)
+  </div>
+  <div class="sb-action" onclick="showTab('sql')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>SQL Editor
+  </div>
+  <div class="sb-action" onclick="showTab('chart')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Build Chart
+  </div>
+  <div class="sb-action" onclick="Grid.exportView('csv')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Export Grid
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+<!-- FILES -->
+<div id="p-files" class="panel active" style="overflow-y:auto;display:flex;flex-direction:column">
+  <div class="pscroll">
+    <div style="max-width:960px;margin:0 auto">
+      <div class="upload-zone" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="event.preventDefault();this.classList.remove('drag');loadFiles(event.dataTransfer.files)">
+        <input type="file" multiple accept=".csv,.tsv" onchange="loadFiles(this.files)">
+        <div style="width:44px;height:44px;border-radius:12px;background:var(--s3);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--acl)" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        </div>
+        <h3>Drop CSV or TSV files here</h3>
+        <p style="margin-top:4px">Multiple files · Each becomes a queryable SQL table · Stays in your browser</p>
+        <p style="margin-top:4px;font-size:10px;font-family:var(--mf);color:var(--t3)">Persists in IndexedDB between sessions · No server · No upload</p>
+      </div>
+      <div class="sample-row">
+        <span class="sample-lbl">Load sample:</span>
+        <button class="sample-btn" onclick="loadSample('sales')">Sales Data</button>
+        <button class="sample-btn" onclick="loadSample('employees')">HR Employees</button>
+        <button class="sample-btn" onclick="loadSample('transactions')">Transactions</button>
+        <button class="sample-btn" onclick="loadSample('messy')">Messy Data ← try cleaning this</button>
+      </div>
+      <div id="files-list" style="margin-top:1.5rem"></div>
+    </div>
+  </div>
+</div>
+
+<!-- GRID -->
+<div id="p-grid" class="panel">
+  <div class="g-toolbar">
+    <select id="sel-grid" onchange="Grid.setDs(this.value)" style="width:160px"><option value="">Select dataset…</option></select>
+    <div style="width:1px;height:20px;background:var(--b2)"></div>
+    <input type="search" id="grid-srch" placeholder="Search all columns…" style="width:175px" oninput="Grid.render()">
+    <button class="btn btn-sm" id="btn-freeze" onclick="Grid.toggleFreeze()" title="Freeze first column">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>Freeze
+    </button>
+    <button class="btn btn-sm" id="btn-stats" onclick="Grid.toggleStats()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Stats
+    </button>
+    <button class="btn btn-sm" onclick="Grid.openColVis()">Columns</button>
+    <button class="btn btn-sm" onclick="Grid.clearFilters()">Clear Filters</button>
+    <div class="ml-auto flex gap2 items-center">
+      <button class="btn btn-sm" onclick="Grid.exportView('csv')">CSV</button>
+      <button class="btn btn-sm" onclick="Grid.exportView('json')">JSON</button>
+      <span id="grid-rc" style="font-size:11px;color:var(--t3);font-family:var(--mf)">—</span>
+    </div>
+  </div>
+  <div style="flex:1;display:flex;overflow:hidden;position:relative">
+    <div style="flex:1;overflow:auto" id="grid-wrap">
+      <div class="empty-st" id="grid-empty" style="height:100%">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        <p>Select a dataset from the dropdown</p>
+      </div>
+      <div id="grid-body" class="hidden"></div>
+    </div>
+    <div class="stat-panel hidden" id="stat-panel"><div class="t2 xs">Click a column header for stats</div></div>
+    <div class="col-vis-modal" id="col-vis-modal" style="display:none"></div>
+  </div>
+</div>
+
+<!-- CLEAN -->
+<div id="p-clean" class="panel">
+  <div class="cln-layout">
+    <div class="cln-cfg">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div><div style="font-size:14px;font-weight:500">Auto Data Cleaning</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">Powered by sklearn + pandas running in Python (Pyodide)</div></div>
+      </div>
+      <div style="padding:9px 12px;background:var(--s2);border-radius:var(--r);margin-bottom:12px;font-size:12px;display:flex;align-items:center;gap:10px">
+        Dataset: <strong id="cln-ds" style="font-family:var(--mf)">none selected</strong>
+        <button class="btn btn-xs ml-auto" onclick="Cleaner.openFor(S.active)">Reload</button>
+      </div>
+      <div class="mrow" style="margin-bottom:10px">
+        <div class="metric" style="flex:1"><div class="ml">Rows</div><div class="mv" id="cln-rows">—</div></div>
+        <div class="metric" style="flex:1"><div class="ml">Cols</div><div class="mv info" id="cln-cols">—</div></div>
+        <div class="metric" style="flex:1"><div class="ml">Nulls</div><div class="mv warn" id="cln-nulls">—</div></div>
+        <div class="metric" style="flex:1"><div class="ml">Dupes</div><div class="mv warn" id="cln-dupes">—</div></div>
+        <div class="metric" style="flex:1"><div class="ml">Complete</div><div class="mv" id="cln-pct">—</div></div>
+      </div>
+
+      <div class="sec-lbl">ML Imputation Model (real sklearn)</div>
+      <div class="fg" style="margin-bottom:10px">
+        <label>Numeric missing value model</label>
+        <select id="cln-model">
+          <option value="knn">KNN Imputer — k=5 neighbors (KNNImputer)</option>
+          <option value="mice">MICE — BayesianRidge iterative (IterativeImputer)</option>
+          <option value="random_forest">Random Forest iterative (50 trees)</option>
+          <option value="mean">Mean / Mode (SimpleImputer)</option>
+          <option value="median">Median / Mode (SimpleImputer)</option>
+        </select>
+      </div>
+
+      <div class="sec-lbl">Global Missing Strategy</div>
+      <div class="fg" style="margin-bottom:10px">
+        <label>Default for all columns (can override per-column →)</label>
+        <select id="cln-missing">
+          <option value="model">Use ML model above</option>
+          <option value="mean">Mean (numeric) / Mode (text)</option>
+          <option value="median">Median (numeric) / Mode (text)</option>
+          <option value="most_frequent">Mode (most frequent value)</option>
+          <option value="ffill">Forward fill</option>
+          <option value="bfill">Backward fill</option>
+          <option value="zero">Fill 0 / empty string</option>
+          <option value="drop">Drop rows with any null</option>
+          <option value="none">Leave as-is</option>
+        </select>
+      </div>
+
+      <div class="sec-lbl">Duplicate Rows</div>
+      <div class="fg" style="margin-bottom:10px">
+        <select id="cln-dupes">
+          <option value="keep_first">Keep first occurrence</option>
+          <option value="keep_last">Keep last occurrence</option>
+          <option value="drop_all">Drop all duplicates</option>
+          <option value="none">Keep all</option>
+        </select>
+      </div>
+
+      <div class="sec-lbl">Outlier Detection</div>
+      <div class="form-row-2 mt4" style="margin-bottom:8px">
+        <div class="fg">
+          <label>Method</label>
+          <select id="cln-omethod">
+            <option value="isolation_forest">IsolationForest (sklearn) ★</option>
+            <option value="iqr">IQR (1.5× fence)</option>
+            <option value="zscore">Z-score (|z|>3)</option>
+            <option value="modified_z">Modified Z-score</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Action</label>
+          <select id="cln-oaction">
+            <option value="cap">Winsorize / Cap</option>
+            <option value="remove">Remove rows</option>
+            <option value="replace_mean">Replace → mean</option>
+            <option value="replace_median">Replace → median</option>
+            <option value="flag">Flag (add column)</option>
+            <option value="keep">Keep (no change)</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:10px">
+        <label>IsolationForest contamination</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="range" id="cln-cont" min="0.01" max="0.5" step="0.01" value="0.05" oninput="this.nextElementSibling.textContent=this.value" style="flex:1">
+          <span style="font-family:var(--mf);font-size:11px;min-width:30px">0.05</span>
+        </div>
+      </div>
+
+      <div class="sec-lbl">String Cleaning</div>
+      <label class="cbox"><input type="checkbox" id="cln-trim" checked> Trim whitespace</label>
+      <label class="cbox"><input type="checkbox" id="cln-collapse" checked> Collapse multiple spaces</label>
+      <label class="cbox"><input type="checkbox" id="cln-enc" checked> Fix encoding (â€", â€™…)</label>
+      <div class="fg mt8 mb10" style="margin-bottom:10px">
+        <label>Default string transform</label>
+        <select id="cln-strtransform">
+          <option value="none">None (per-column only)</option>
+          <option value="lower">Lowercase all text</option>
+          <option value="upper">Uppercase all text</option>
+          <option value="title">Title case all text</option>
+          <option value="strip_special">Strip special chars</option>
+        </select>
+      </div>
+
+      <div class="sec-lbl">Type Coercion</div>
+      <label class="cbox"><input type="checkbox" id="cln-num" checked> Numeric strings ($1,200 → 1200)</label>
+      <label class="cbox"><input type="checkbox" id="cln-bool" checked> Booleans (yes/no → 1/0)</label>
+
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-p btn-sm" onclick="Cleaner.run()" id="cln-run">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run Cleaning
+        </button>
+        <button class="btn btn-sm" onclick="Cleaner.expandAll()">Expand All</button>
+        <button class="btn btn-sm" onclick="Cleaner.collapseAll()">Collapse</button>
+      </div>
+      <div style="margin-top:10px"><div class="sec-lbl">Log</div>
+        <div class="log-box" id="cln-log"><div class="log-line info">Select a dataset, configure, then click Run Cleaning.</div></div>
+      </div>
+      <div id="cln-sum" class="hidden" style="margin-top:10px">
+        <div class="sec-lbl">Results</div><div id="cln-badges"></div>
+      </div>
+    </div>
+    <div class="cln-cols">
+      <div style="font-size:13px;font-weight:500;margin-bottom:4px">Per-Column Overrides</div>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:10px">Expand any column to override its cleaning settings individually.</div>
+      <div id="col-cards"><div style="color:var(--t3);font-size:12px;text-align:center;padding:2rem">Open a dataset via Files tab, then click Auto Clean or use the sidebar.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SQL -->
+<div id="p-sql" class="panel">
+  <div class="sql-ea">
+    <div class="sql-tb">
+      <div style="font-size:13px;font-weight:500">SQL Query</div>
+      <div style="font-size:11px;color:var(--t3)">Ctrl+Enter · DuckDB-WASM real SQL engine with fallback</div>
+      <div class="ml-auto flex gap2">
+        <button class="btn btn-sm" onclick="SQL.format()">Format</button>
+        <button class="btn btn-sm" onclick="SQL.clear()">Clear</button>
+        <button class="btn btn-p btn-sm" onclick="SQL.run()" id="sql-run">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run
+        </button>
+      </div>
+    </div>
+    <textarea class="code-ed" id="sql-ed" spellcheck="false" rows="6"
+      placeholder="-- SELECT with full SQL support
+SELECT region, category,
+       SUM(total) as revenue,
+       AVG(profit) as avg_profit,
+       COUNT(*) as orders
+FROM sales
+GROUP BY region, category
+ORDER BY revenue DESC
+LIMIT 20
+
+-- JOINs: JOIN employees ON sales.salesperson = employees.name
+-- CTEs:  WITH monthly AS (SELECT ...) SELECT * FROM monthly
+-- Window: ROW_NUMBER() OVER (PARTITION BY region ORDER BY total DESC)"></textarea>
+    <div class="sql-snippets">
+      <span style="font-size:10px;color:var(--t3);align-self:center">Snippets:</span>
+      <button class="snip" onclick="SQL.snippet('SELECT *, ROW_NUMBER() OVER (PARTITION BY  ORDER BY  DESC) as rn FROM ')">Window</button>
+      <button class="snip" onclick="SQL.snippet('WITH cte AS (\n  SELECT * FROM \n)\nSELECT * FROM cte LIMIT 20')">CTE</button>
+      <button class="snip" onclick="SQL.snippet('SELECT a.*, b.*\nFROM  a\nINNER JOIN  b ON a. = b.')">JOIN</button>
+      <button class="snip" onclick="SQL.snippet('SELECT col, COUNT(*) n, SUM(val) total, AVG(val) avg\nFROM \nGROUP BY col\nORDER BY n DESC')">GROUP BY</button>
+      <button class="snip" onclick="SQL.snippet('SELECT * FROM  WHERE  IS NULL')">Nulls</button>
+      <button class="snip" onclick="SQL.snippet('SELECT DISTINCT col FROM ')">DISTINCT</button>
+      <button class="snip" onclick="SQL.snippet('SELECT *, ABS(val - AVG(val) OVER()) as deviation FROM ')">Deviation</button>
+    </div>
+    <div class="tbl-chips" id="table-chips"></div>
+  </div>
+  <div class="sql-main">
+    <div class="sql-results" id="sql-results">
+      <div id="sql-res" style="flex:1;overflow:auto">
+        <div class="empty-st" style="height:100%">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          <p>Run a query to see results</p>
+        </div>
+      </div>
+    </div>
+    <div class="sql-hist">
+      <div style="padding:10px 12px 5px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t3)">Query History</div>
+      <div id="sql-hist"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CHARTS -->
+<div id="p-chart" class="panel">
+  <div class="ch-layout">
+    <div class="ch-cfg">
+      <div class="ch-sec">
+        <div class="ch-sec-t">Dataset</div>
+        <div class="fg" style="margin-bottom:8px">
+          <label>Source</label>
+          <select id="sel-chart" onchange="Chart.populateCols(this.value);Chart.build()"><option value="">Select dataset…</option></select>
+        </div>
+        <button class="btn btn-sm" style="width:100%;margin-bottom:0" onclick="Chart.useSQL()">Use Last SQL Result</button>
+      </div>
+      <div class="ch-sec">
+        <div class="ch-sec-t">Chart Type</div>
+        <div class="ch-type-g">
+          <button class="btn btn-sm ct-btn active-btn" id="ct-bar" onclick="Chart.setType('bar')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Bar</button>
+          <button class="btn btn-sm ct-btn" id="ct-line" onclick="Chart.setType('line')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Line</button>
+          <button class="btn btn-sm ct-btn" id="ct-pie" onclick="Chart.setType('pie')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 118 2.83"/><path d="M22 12A10 10 0 0012 2v10z"/></svg>Pie</button>
+          <button class="btn btn-sm ct-btn" id="ct-doughnut" onclick="Chart.setType('doughnut')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>Donut</button>
+          <button class="btn btn-sm ct-btn" id="ct-scatter" onclick="Chart.setType('scatter')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="17" r="2"/><circle cx="17" cy="7" r="2"/><circle cx="12" cy="12" r="2"/></svg>Scatter</button>
+          <button class="btn btn-sm ct-btn" id="ct-radar" onclick="Chart.setType('radar')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>Radar</button>
+          <button class="btn btn-sm ct-btn" id="ct-polarArea" onclick="Chart.setType('polarArea')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="12"/></svg>Polar</button>
+          <button class="btn btn-sm ct-btn" id="ct-bubble" onclick="Chart.setType('bubble')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="16" r="3"/><circle cx="16" cy="8" r="4"/></svg>Bubble</button>
+        </div>
+      </div>
+      <div class="ch-sec">
+        <div class="ch-sec-t">Axes & Data</div>
+        <div class="fg" style="margin-bottom:8px"><label>X Axis (label)</label><select id="ch-x" onchange="Chart.build()"><option value="">Select…</option></select></div>
+        <div class="fg" style="margin-bottom:8px"><label>Y Axis (value)</label><select id="ch-y" onchange="Chart.build()"><option value="">Select…</option></select></div>
+        <div class="fg" style="margin-bottom:8px"><label>Aggregate Y by X</label>
+          <select id="ch-agg" onchange="Chart.build()">
+            <option value="none">Raw values</option><option value="sum">SUM</option><option value="avg">AVG</option>
+            <option value="count">COUNT</option><option value="median">MEDIAN</option><option value="min">MIN</option><option value="max">MAX</option>
+          </select>
+        </div>
+        <div class="fg"><label>Sort</label>
+          <select id="ch-sort" onchange="Chart.build()"><option value="none">No sort</option><option value="asc">Ascending</option><option value="desc">Descending</option></select>
+        </div>
+      </div>
+      <div class="ch-sec">
+        <div class="ch-sec-t">Appearance</div>
+        <div class="fg" style="margin-bottom:8px"><label>Title</label><input type="text" id="ch-title" placeholder="Chart title" oninput="Chart.build()"></div>
+        <div class="form-row-2" style="margin-bottom:8px">
+          <div class="fg"><label>Color</label><input type="color" id="ch-color" value="#22c55e" onchange="Chart.build()" style="width:100%;height:32px"></div>
+          <div class="fg"><label>Max rows</label><input type="number" id="ch-max" value="50" min="5" max="5000" step="5" oninput="Chart.build()" style="width:100%"></div>
+        </div>
+        <label class="cbox"><input type="checkbox" id="ch-legend" checked onchange="Chart.build()"> Show legend</label>
+        <label class="cbox"><input type="checkbox" id="ch-grid" checked onchange="Chart.build()"> Grid lines</label>
+        <label class="cbox"><input type="checkbox" id="ch-fill" onchange="Chart.build()"> Fill area (line)</label>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-p btn-sm" onclick="Chart.build()" style="flex:1">Refresh</button>
+        <button class="btn btn-sm" onclick="Chart.exportPNG()">PNG</button>
+      </div>
+    </div>
+    <div class="ch-prev">
+      <div class="ch-canvas" id="ch-canvas">
+        <div class="empty-st" id="ch-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><p>Select dataset and columns</p></div>
+        <canvas id="main-chart" style="display:none;max-height:500px"></canvas>
+      </div>
+      <div class="ch-foot"><span id="ch-info">—</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARE -->
+<div id="p-compare" class="panel" style="flex-direction:column">
+  <div style="padding:12px 14px;border-bottom:1px solid var(--b1);display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;background:var(--s1);flex-shrink:0">
+    <div class="fg" style="min-width:160px;margin:0"><label>Dataset A</label><select id="sel-cmp-a" onchange="Compare.run()"><option value="">Select…</option></select></div>
+    <div style="font-size:22px;color:var(--t3);padding-bottom:4px">⇄</div>
+    <div class="fg" style="min-width:160px;margin:0"><label>Dataset B</label><select id="sel-cmp-b" onchange="Compare.run()"><option value="">Select…</option></select></div>
+    <button class="btn btn-p btn-sm" style="align-self:flex-end" onclick="Compare.run()">Compare</button>
+    <button class="btn btn-sm ml-auto" onclick="Compare.exportReport()">Export Report</button>
+  </div>
+  <div id="cmp-body" style="overflow-y:auto;flex:1;padding:14px">
+    <div class="empty-st" style="height:300px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg><p>Select two datasets to compare</p></div>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div id="p-profile" class="panel" style="flex-direction:column">
+  <div style="padding:12px 14px;border-bottom:1px solid var(--b1);display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--s1);flex-shrink:0">
+    <div style="font-size:13px;font-weight:500">Data Profile</div>
+    <select id="sel-profile" style="width:200px" onchange="Profiler.render()"><option value="">Select dataset…</option></select>
+    <button class="btn btn-p btn-sm" onclick="Profiler.render()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>Profile
+    </button>
+    <span style="font-size:11px;color:var(--t2)">Uses Python/pandas when ML engine is ready — richer stats including skewness, histograms, PCA, anomalies</span>
+    <button class="btn btn-sm ml-auto" onclick="Profiler.exportReport(qs('#sel-profile').value)">Export CSV</button>
+  </div>
+  <div id="profile-content" style="overflow-y:auto;flex:1;padding:14px">
+    <div class="empty-st" style="height:300px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><p>Select a dataset to profile</p></div>
+  </div>
+</div>
+
+</div><!-- /content -->
+</div><!-- /app -->
+
+<div class="notif-area" id="notif-area"></div>
+
+<script src="js/engine.js"></script>
+<script src="js/grid.js"></script>
+<script src="js/modules.js"></script>
+</body>
+</html>
