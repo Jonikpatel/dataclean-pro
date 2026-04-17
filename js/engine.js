@@ -116,16 +116,21 @@ async function sqlRun(sql) {
   }
   try {
     const res = await S.sqlConn.query(sql);
+
+    // Column names from Arrow schema
     const headers = res.schema.fields.map(f => f.name);
-    const rows = [];
-    for (const b of res.batches) {
-      for (let i = 0; i < b.numRows; i++) {
-        rows.push(headers.map((h, ci) => {
-          const v = b.getChildAt(ci)?.get(i);
-          return v === null || v === undefined ? null : String(v);
-        }));
-      }
-    }
+
+    // Rows as array of objects
+    const objs = res.toArray();  // DuckDB-Wasm pattern [web:45][web:61]
+
+    // Convert to array-of-arrays of strings/nulls for the grid
+    const rows = objs.map(o =>
+      headers.map(h => {
+        const v = o[h];
+        return v === null || v === undefined ? null : String(v);
+      })
+    );
+
     return { headers, rows };
   } catch (e) {
     throw new Error(e.message);
