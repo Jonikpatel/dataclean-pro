@@ -63,7 +63,7 @@ function mlStatus(msg, type = 'info') {
 // ══════════════════════════════════════════════════════════════
 async function sqlInit() {
   try {
-    const CDN = 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/';
+    const CDN = 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm/dist/';
     const bundles = {
       mvp: { mainModule: CDN + 'duckdb-mvp.wasm', mainWorker: CDN + 'duckdb-browser-mvp.worker.js' },
       eh:  { mainModule: CDN + 'duckdb-eh.wasm',  mainWorker: CDN + 'duckdb-browser-eh.worker.js' },
