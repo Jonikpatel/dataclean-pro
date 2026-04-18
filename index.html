@@ -7,6 +7,11 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2316a34a'/><path d='M7 9h18M7 15h14M7 21h10' stroke='white' stroke-width='2.5' stroke-linecap='round'/></svg>">
 <link rel="stylesheet" href="css/app.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+ <script>
+  if (window.Chart && typeof window.Chart !== 'function' && typeof window.Chart.Chart === 'function') {
+    window.Chart = window.Chart.Chart;
+  }
+</script>
 <!-- DuckDB WASM (real SQL engine) — loaded async -->
 <script src="https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm/dist/duckdb-browser.js"></script>
 </head>
