@@ -2,7 +2,7 @@
 
 > A real ML-powered data cleaning and analysis studio that runs 100% in your browser.
 
-**Live demo:** `https://YOUR_USERNAME.github.io/dataclean-pro`
+**Live demo:** `https://jonikpatel.github.io/dataclean-pro`
 
 ---
 
