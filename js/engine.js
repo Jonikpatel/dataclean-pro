@@ -105,7 +105,7 @@ async function _sqlRegister(name, ds) {
     )].join('\n');
     await S.sqlDB.registerFileText(name + '.csv', csv);
     await S.sqlConn.query(
-      `CREATE OR REPLACE TABLE "${name}" AS SELECT * FROM read_csv_auto('${name}.csv', header=true)`
+      `CREATE TABLE "${name}" AS SELECT * FROM read_csv_auto('${name}.csv', header=true)`
     );
   } catch (e) { console.warn('sqlRegister:', e.message); }
 }
