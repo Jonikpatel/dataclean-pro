@@ -60,11 +60,6 @@ dataclean-pro/
 
 ---
 
-### 1. Create a public GitHub repo
-
-Go to [github.com/new](https://github.com/new), name it `dataclean-pro`, set it to **Public**, do NOT add a README.
-
-
 ## How the ML engine works
 
 When the page loads, a Web Worker downloads Pyodide (~15 MB, cached after first load) and installs `numpy`, `pandas`, `scipy`, and `scikit-learn`. Once ready, the badge in the top bar turns green.
