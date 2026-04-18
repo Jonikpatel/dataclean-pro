@@ -60,8 +60,6 @@ dataclean-pro/
 
 ---
 
-## Deploy in 3 steps
-
 ### 1. Create a public GitHub repo
 
 Go to [github.com/new](https://github.com/new), name it `dataclean-pro`, set it to **Public**, do NOT add a README.
