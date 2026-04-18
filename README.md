@@ -66,25 +66,6 @@ dataclean-pro/
 
 Go to [github.com/new](https://github.com/new), name it `dataclean-pro`, set it to **Public**, do NOT add a README.
 
-### 2. Push these files
-
-```bash
-cd dataclean-pro          # this folder
-git init
-git add .
-git commit -m "Initial release"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/dataclean-pro.git
-git push -u origin main
-```
-
-### 3. Enable GitHub Pages
-
-Go to your repo → **Settings** → **Pages** → **Source** → `GitHub Actions`
-
-Your app is live at: `https://YOUR_USERNAME.github.io/dataclean-pro`
-
----
 
 ## How the ML engine works
 
