@@ -315,29 +315,61 @@ const Chart = (() => {
     if(inst)inst.destroy();
     const bgC=isPie?labels.map((_,i)=>PAL[i%PAL.length]+'cc'):color+'cc';
     const brdC=isPie?labels.map((_,i)=>PAL[i%PAL.length]):color;
-    inst=new globalThis.Chart(canvas,{
-      type:S.chartType,
-      data:{labels:S.chartType==='scatter'?undefined:labels,datasets:[{
-        label:yCol,data:S.chartType==='scatter'?scData:values,
-        backgroundColor:bgC,borderColor:brdC,
-        borderWidth:S.chartType==='line'?2.5:1,
-        fill:S.chartType==='line'&&qs('#ch-fill')?.checked,
-        tension:S.chartType==='line'?.4:undefined,
-        pointRadius:S.chartType==='scatter'?5:S.chartType==='line'?3:undefined,
-      }]},
-      options:{
-        responsive:true,maintainAspectRatio:false,animation:{duration:250},
-        plugins:{
-          legend:{display:qs('#ch-legend').checked,labels:{color:'#a0a0a0',font:{size:11}}},
-          title:{display:!!title,text:title,color:'#efefef',font:{size:13,weight:'600'}},
-          tooltip:{backgroundColor:'#1c1c1c',borderColor:'#2e2e2e',borderWidth:1,titleColor:'#efefef',bodyColor:'#999'},
-        },
-        scales:isPie?{}:{
-          x:{display:true,grid:{display:qs('#ch-grid').checked,color:'rgba(255,255,255,0.05)'},ticks:{color:'#555',font:{size:10},maxRotation:45,maxTicksLimit:20}},
-          y:{display:true,grid:{display:qs('#ch-grid').checked,color:'rgba(255,255,255,0.05)'},ticks:{color:'#555',font:{size:10}}},
-        },
+    // Use the real Chart.js constructor we saved as window.ChartJS
+const ChartCtor = globalThis.ChartJS;
+
+inst = new ChartCtor(canvas, {
+  type: S.chartType,
+  data: {
+    labels,
+    datasets: [{
+      label: yCol,
+      data: S.chartType === 'scatter' ? scData : values,
+      backgroundColor: bgC,
+      borderColor: brdC,
+      borderWidth: S.chartType === 'line' ? 2.5 : 1,
+      fill: S.chartType === 'line' ? qs('#ch-fill')?.checked : undefined,
+      tension: S.chartType === 'line' ? 0.4 : undefined,
+      pointRadius: S.chartType === 'scatter' ? 5 : (S.chartType === 'line' ? 3 : undefined),
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 250 },
+    plugins: {
+      legend: {
+        display: qs('#ch-legend')?.checked ?? true,
+        labels: { color: '#a0a0a0', font: { size: 11 } }
+      },
+      title: {
+        display: !!title,
+        text: title,
+        color: '#efefef',
+        font: { size: 13, weight: '600' }
+      },
+      tooltip: {
+        backgroundColor: '#1c1c1c',
+        borderColor: '#2e2e2e',
+        borderWidth: 1,
+        titleColor: '#efefef',
+        bodyColor: '#999'
       }
-    });
+    },
+    scales: isPie ? {} : {
+      x: {
+        display: true,
+        grid: { display: qs('#ch-grid')?.checked ?? true, color: 'rgba(255,255,255,0.05)' },
+        ticks: { color: '#555', font: { size: 10 }, maxRotation: 45, maxTicksLimit: 20 }
+      },
+      y: {
+        display: true,
+        grid: { display: qs('#ch-grid')?.checked ?? true, color: 'rgba(255,255,255,0.05)' },
+        ticks: { color: '#555', font: { size: 10 } }
+      }
+    }
+  }
+});
     qs('#ch-info').textContent=`${S.chartType} · ${labels.length||scData.length} points`;
   }
   function toggleEmpty(s){qs('#ch-empty').style.display=s?'flex':'none';qs('#main-chart').style.display=s?'none':'block';}
