@@ -67,26 +67,26 @@ function mlStatus(msg, type = 'info') {
 // ══════════════════════════════════════════════════════════════
 //  DUCKDB SQL ENGINE  (DuckDB only)
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+//  DUCKDB SQL ENGINE  (DuckDB only, no fallback)
+// ══════════════════════════════════════════════════════════════
 async function sqlInit() {
   try {
-    // Use official helper to get the correct jsDelivr bundles
+    // Use official helper to get jsDelivr bundles
     const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
     const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
 
-    // Start DuckDB worker for the selected bundle
     const worker = new Worker(bundle.mainWorker);
     const logger = new duckdb.ConsoleLogger();
 
     S.sqlDB = new duckdb.AsyncDuckDB(logger, worker);
-
-    // Instantiate the database
     await S.sqlDB.instantiate(bundle.mainModule, bundle.pthreadWorker);
     S.sqlConn = await S.sqlDB.connect();
 
     S.sqlReady = true;
     setBadge('badge-sql', 'DuckDB Ready', 'ok');
 
-    // Register any datasets already loaded into S.datasets
+    // Register any datasets already loaded (e.g. from IndexedDB)
     for (const [n, ds] of Object.entries(S.datasets)) {
       await _sqlRegister(n, ds);
     }
@@ -98,16 +98,24 @@ async function sqlInit() {
   }
 }
 async function _sqlRegister(name, ds) {
-  if (S.useFallbackSQL || !S.sqlConn) return;
+  if (!S.sqlConn) return;
   try {
-    const csv = [ds.headers.join(','), ...ds.rows.map(r =>
-      r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')
-    )].join('\n');
+    const csv = [
+      ds.headers.join(','),
+      ...ds.rows.map(r =>
+        r
+          .map(v => `"${String(v ?? '').replace(/"/g, '""')}"`)
+          .join(',')
+      )
+    ].join('\n');
+
     await S.sqlDB.registerFileText(name + '.csv', csv);
     await S.sqlConn.query(
-      `CREATE TABLE "${name}" AS SELECT * FROM read_csv_auto('${name}.csv', header=true)`
+      `CREATE OR REPLACE TABLE "${name}" AS SELECT * FROM read_csv_auto('${name}.csv', header=true)`
     );
-  } catch (e) { console.warn('sqlRegister:', e.message); }
+  } catch (e) {
+    console.warn('sqlRegister:', e.message);
+  }
 }
 
 async function sqlRun(sql) {
@@ -117,13 +125,13 @@ async function sqlRun(sql) {
   try {
     const res = await S.sqlConn.query(sql);
 
-    // Column names from Arrow schema
+    // Column names
     const headers = res.schema.fields.map(f => f.name);
 
     // Rows as array of objects
-    const objs = res.toArray();  // DuckDB-Wasm pattern [web:45][web:61]
+    const objs = res.toArray();
 
-    // Convert to array-of-arrays of strings/nulls for the grid
+    // Convert to array-of-arrays for the grid
     const rows = objs.map(o =>
       headers.map(h => {
         const v = o[h];
@@ -345,13 +353,25 @@ const _N = v => ['', 'null', 'none', 'nan', 'na', 'n/a', 'nil', '#n/a', 'undefin
 //  DATASET MANAGEMENT
 // ══════════════════════════════════════════════════════════════
 function dsAdd(name, headers, rows, fileName) {
-  const n = name.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^(\d)/, 't$1');
+  const n = name
+    .replace(/[^a-zA-Z0-9_]/g, '_')
+    .replace(/^(\d)/, 't$1');
+
   S.datasets[n] = { headers, rows, fileName, loaded: new Date() };
   if (!S.active) S.active = n;
+
   _idbSave(n);
-  if (S.sqlReady) _sqlRegister(n, S.datasets[n]);
+
+  // IMPORTANT: register with DuckDB when ready
+  if (S.sqlReady && S.sqlConn) {
+    _sqlRegister(n, S.datasets[n]);
+  }
+
   refreshUI();
-  notify(`Loaded "${fileName}" → ${rows.length.toLocaleString()} rows × ${headers.length} cols`, 'ok');
+  notify(
+    `Loaded "${fileName}" → ${rows.length.toLocaleString()} rows × ${headers.length} cols`,
+    'ok'
+  );
 }
 
 function dsDel(name) {
