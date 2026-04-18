@@ -101,7 +101,7 @@ async function _sqlRegister(name, ds) {
   if (!S.sqlConn) return;
   try {
     const csv = [
-      ds.headers.join(','),
+      ds.headers.join(','), 
       ...ds.rows.map(r =>
         r
           .map(v => `"${String(v ?? '').replace(/"/g, '""')}"`)
@@ -109,15 +109,20 @@ async function _sqlRegister(name, ds) {
       )
     ].join('\n');
 
+    // Register the CSV content as a DuckDB virtual file
     await S.sqlDB.registerFileText(name + '.csv', csv);
+
+    // Drop any existing table with this name
+    await S.sqlConn.query(`DROP TABLE IF EXISTS "${name}"`);
+
+    // Create the table from the CSV
     await S.sqlConn.query(
-      `CREATE OR REPLACE TABLE "${name}" AS SELECT * FROM read_csv_auto('${name}.csv', header=true)`
+      `CREATE TABLE "${name}" AS SELECT * FROM read_csv_auto('${name}.csv', header=true)`
     );
   } catch (e) {
     console.warn('sqlRegister:', e.message);
   }
 }
-
 async function sqlRun(sql) {
   if (!S.sqlReady || !S.sqlConn) {
     throw new Error('DuckDB engine not ready yet');
