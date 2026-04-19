@@ -4,9 +4,9 @@
  */
 'use strict';
 
-// ══════════════════════════════════════════════════════════════
+
 //  GLOBAL STATE
-// ══════════════════════════════════════════════════════════════
+
 window.S = {
   datasets: {},       // { name: {headers, rows, fileName, loaded} }
   active: null,
@@ -22,9 +22,9 @@ window.S = {
   _mlId: 0,
 };
 
-// ══════════════════════════════════════════════════════════════
+
 //  ML WORKER BRIDGE
-// ══════════════════════════════════════════════════════════════
+
 function mlStart() {
   S.mlWorker = new Worker('js/ml-worker.js');
   S.mlWorker.onmessage = ({ data }) => {
@@ -58,18 +58,12 @@ function mlStatus(msg, type = 'info') {
   if (el) { el.textContent = msg; el.className = 'ml-msg ' + type; }
 }
 
-// ══════════════════════════════════════════════════════════════
-//  DUCKDB SQL ENGINE
-// ══════════════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════════════
+
+
+
+
 //  DUCKDB SQL ENGINE  (DuckDB only, no fallback)
-// ══════════════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════════════
-//  DUCKDB SQL ENGINE  (DuckDB only)
-// ══════════════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════════════
-//  DUCKDB SQL ENGINE  (DuckDB only, no fallback)
-// ══════════════════════════════════════════════════════════════
+
 async function sqlInit() {
   try {
     // Use official helper to get jsDelivr bundles
@@ -354,9 +348,9 @@ function _evalWhere(clause, row, headers) {
 
 const _N = v => ['', 'null', 'none', 'nan', 'na', 'n/a', 'nil', '#n/a', 'undefined'].includes(String(v ?? '').toLowerCase().trim());
 
-// ══════════════════════════════════════════════════════════════
+
 //  DATASET MANAGEMENT
-// ══════════════════════════════════════════════════════════════
+
 function dsAdd(name, headers, rows, fileName) {
   const n = name
     .replace(/[^a-zA-Z0-9_]/g, '_')
@@ -386,9 +380,9 @@ function dsDel(name) {
   refreshUI();
 }
 
-// ══════════════════════════════════════════════════════════════
+
 //  CSV PARSER  (handles quoted fields, any separator)
-// ══════════════════════════════════════════════════════════════
+
 function csvParse(text, sep = ',') {
   const lines = text.split(/\r?\n/);
   const parse = line => {
@@ -412,9 +406,9 @@ function csvParse(text, sep = ',') {
   return { headers, rows };
 }
 
-// ══════════════════════════════════════════════════════════════
+
 //  INDEXEDDB  (session persistence)
-// ══════════════════════════════════════════════════════════════
+
 const IDB = { db: null, name: 'dcp_v2', store: 'ds' };
 
 async function _idbOpen() {
@@ -443,9 +437,9 @@ async function _idbLoad() {
   } catch {}
 }
 
-// ══════════════════════════════════════════════════════════════
+
 //  UI HELPERS
-// ══════════════════════════════════════════════════════════════
+
 function refreshUI() {
   _sidebarRender();
   _selectsUpdate();
@@ -531,9 +525,9 @@ function setBadge(id, text, type) {
   el.className = 'badge ' + (type === 'ok' ? 'bg-g' : type === 'err' ? 'bg-e' : 'bg-n');
 }
 
-// ══════════════════════════════════════════════════════════════
+
 //  NOTIFICATIONS
-// ══════════════════════════════════════════════════════════════
+
 function notify(msg, type = 'info', dur = 4000) {
   const area = qs('#notif-area');
   const el = document.createElement('div');
@@ -543,9 +537,9 @@ function notify(msg, type = 'info', dur = 4000) {
   setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(110%)'; setTimeout(() => el.remove(), 350); }, dur);
 }
 
-// ══════════════════════════════════════════════════════════════
+
 //  FILE LOADING
-// ══════════════════════════════════════════════════════════════
+
 function loadFiles(files) {
   [...files].forEach(f => {
     const r = new FileReader();
@@ -559,9 +553,9 @@ function loadFiles(files) {
   });
 }
 
-// ══════════════════════════════════════════════════════════════
+
 //  SAMPLE DATASETS
-// ══════════════════════════════════════════════════════════════
+
 const SAMPLES = {
   sales: {
     fileName: 'sales.csv',
@@ -642,9 +636,9 @@ function loadSample(name) {
   dsAdd(n, s.headers, s.rows.map(r => [...r]), s.fileName);
 }
 
-// ══════════════════════════════════════════════════════════════
+
 //  UTILS
-// ══════════════════════════════════════════════════════════════
+
 const qs = sel => document.querySelector(sel);
 const escH = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const nFmt = (n, d = 4) => typeof n === 'number' ? +n.toFixed(d) : n;
