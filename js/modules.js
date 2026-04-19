@@ -1,7 +1,7 @@
 'use strict';
-// ══════════════════════════════════════════════════════════════
+
 //  CLEANER  — real sklearn via Pyodide ML worker
-// ══════════════════════════════════════════════════════════════
+
 const Cleaner = (() => {
   let target=null,colCfg={};
   function openFor(name){
@@ -156,9 +156,9 @@ const Cleaner = (() => {
 })();
 window.Cleaner=Cleaner;
 
-// ══════════════════════════════════════════════════════════════
+
 //  SQL EDITOR
-// ══════════════════════════════════════════════════════════════
+
 const SQL = (() => {
   let hist=[];
   function quickQuery(name){qs('#sql-ed').value=`SELECT *\nFROM ${name}\nLIMIT 50`;}
@@ -240,9 +240,9 @@ const SQL = (() => {
 })();
 window.SQL=SQL;
 
-// ══════════════════════════════════════════════════════════════
+
 //  CHART BUILDER
-// ══════════════════════════════════════════════════════════════
+
 const Chart = (() => {
   let inst=null;
   const PAL=['#22c55e','#60a5fa','#f59e0b','#a78bfa','#f87171','#34d399','#fb923c','#38bdf8','#e879f9','#4ade80'];
@@ -379,9 +379,9 @@ inst = new ChartCtor(canvas, {
 })();
 window.Chart=Chart;
 
-// ══════════════════════════════════════════════════════════════
+
 //  PROFILER  — uses real Python/pandas when ML ready
-// ══════════════════════════════════════════════════════════════
+
 const Profiler = (() => {
   async function render(){
     const name=qs('#sel-profile').value||S.active;
@@ -563,9 +563,9 @@ const Profiler = (() => {
 })();
 window.Profiler=Profiler;
 
-// ══════════════════════════════════════════════════════════════
+
 //  COMPARE
-// ══════════════════════════════════════════════════════════════
+
 const Compare = (() => {
   function init(){
     const names=dsNames();
